@@ -12,7 +12,7 @@ struct meta
 
 typedef struct meta meta;
 
-int load(ErlNifEnv* caller_env, void** priv_data, ERL_NIF_TERM load_info)
+static int load(ErlNifEnv* caller_env, void** priv_data, ERL_NIF_TERM load_info)
 {
   meta *meta_data = (meta*)enif_alloc(sizeof(meta));
   
@@ -67,7 +67,7 @@ static ERL_NIF_TERM tuntap_start_nif(ErlNifEnv* env, int argc, const ERL_NIF_TER
   enif_get_int(env, mode_erl, &mode);
   enif_get_int(env, unit_erl, &unit);
   void *ptr;
-  void *get_device_resource(env, device_erl, &ptr);
+  get_device_resource(env, device_erl, &ptr);
   if (ptr)
   {
     struct device** device = ptr;
@@ -87,10 +87,10 @@ static ERL_NIF_TERM tuntap_set_hwaddr_nif(ErlNifEnv* env, int argc, const ERL_NI
   char buffer[1024];
   int len;
 
-  len = enif_get_string(env, mac_addr_erl, buf, 1024, ERL_NIF_UTF8);
+  len = enif_get_string(env, mac_addr_erl, buffer, 1024, ERL_NIF_UTF8);
   if (len) {
     void *ptr;
-    void *get_device_resource(env, device_erl, &ptr);
+    get_device_resource(env, device_erl, &ptr);
     if (ptr)
     {
       struct device** device = ptr;
@@ -109,11 +109,11 @@ static ERL_NIF_TERM tuntap_up_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM a
 {
   ERL_NIF_TERM device_erl = argv[0];
   void *ptr;
-  void *get_device_resource(env, device_erl, &ptr);
+  get_device_resource(env, device_erl, &ptr);
   if (ptr)
   {
     struct device** device = ptr;
-    int res
+    int res;
     res = tuntap_up(*device);
     if (res)
     {
@@ -127,11 +127,11 @@ static ERL_NIF_TERM tuntap_down_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM
 {
   ERL_NIF_TERM device_erl = argv[0];
   void *ptr;
-  void *get_device_resource(env, device_erl, &ptr);
+  get_device_resource(env, device_erl, &ptr);
   if (ptr)
   {
     struct device** device = ptr;
-    int res
+    int res;
     res = tuntap_down(*device);
     if (res)
     {
@@ -146,7 +146,7 @@ static ERL_NIF_TERM tuntap_set_ip_nif(ErlNifEnv* env, int argc, const ERL_NIF_TE
   ERL_NIF_TERM device_erl = argv[0];
   ERL_NIF_TERM addr_erl = argv[1];
   ERL_NIF_TERM netmask_erl = argv[2];
-  init netmask;
+  int netmask;
   enif_get_int(env, netmask_erl, &netmask);
   char buffer[1024];
   int len; 
@@ -154,7 +154,7 @@ static ERL_NIF_TERM tuntap_set_ip_nif(ErlNifEnv* env, int argc, const ERL_NIF_TE
   if (len)
   {
     void *ptr;
-    void *get_device_resource(env, device_erl, &ptr);
+    get_device_resource(env, device_erl, &ptr);
     if (ptr)
     {
       struct device **device = ptr;
@@ -173,14 +173,12 @@ static ERL_NIF_TERM tuntap_read_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM
 {
   ERL_NIF_TERM device_erl = argv[0];
   void *ptr;
-  void *get_device_resource(env, device_erl, &ptr);
+  get_device_resource(env, device_erl, &ptr);
   if (ptr)
   {
     struct device **device = ptr;
     int buf_length;
-    int mtu = tuntap_get_mtu(*device);
-    buf_length = tuntap_get_readbale(*device);
-    int ramin = buf_length
+    buf_length = tuntap_get_readable(*device);
     if (buf_length < 1)
     {
       //enif_alloc_binary(buf_length, )
@@ -195,7 +193,7 @@ static ERL_NIF_TERM tuntap_read_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM
     enif_free(buff);
     return res;
   }
-  return nil
+  return enif_make_atom(env, "nil");
 }
 
 static ERL_NIF_TERM tuntap_write_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
@@ -208,7 +206,7 @@ static ERL_NIF_TERM tuntap_write_nif(ErlNifEnv* env, int argc, const ERL_NIF_TER
   void *data = (void *)bin.data;
 
   void *ptr;
-  void *get_device_resource(env, device_erl, &ptr);
+  get_device_resource(env, device_erl, &ptr);
   if (ptr == NULL){
     return enif_make_atom(env, "false");
   }
@@ -226,23 +224,32 @@ static ERL_NIF_TERM tuntap_write_nif(ErlNifEnv* env, int argc, const ERL_NIF_TER
     flag = enif_make_atom(env, "true");
 
   }
-  flag = enif_make_int(env, write_len);
-  return enif_make_tuple2(env, flag, length);
+  length = enif_make_int(env, write_len);
+  return enif_make_tuple(env, 2, flag, length);
 }
 
 static ERL_NIF_TERM tuntap_get_fd_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
   ERL_NIF_TERM device_erl = argv[0];
   void *ptr;
-  void *get_device_resource(env, device_erl, &ptr);
+  get_device_resource(env, device_erl, &ptr);
   if (ptr == NULL){
     return enif_make_atom(env, "false");
   }
   struct device **device = ptr;
-  int fd = tuntap_get_fd(device);
+  int fd = tuntap_get_fd(*device);
   ERL_NIF_TERM fd_elr  = enif_make_int(env, fd);
-  return fd_elr
+  return fd_elr;
 }
+
+void get_device_resource(ErlNifEnv* env, ERL_NIF_TERM term, void** ptr)
+{
+  meta *meta_data = enif_priv_data(env);
+  ErlNifResourceType *device_type = meta_data->device;
+
+  enif_get_resource(env, term, device_type, ptr);
+}
+
 
 static ErlNifFunc nif_funcs[] ={
   {"tuntap_init", 0, tuntap_init_nif},
