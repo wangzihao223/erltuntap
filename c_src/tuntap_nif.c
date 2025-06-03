@@ -66,16 +66,22 @@ static ERL_NIF_TERM tuntap_start_nif(ErlNifEnv* env, int argc, const ERL_NIF_TER
   int unit;
   enif_get_int(env, mode_erl, &mode);
   enif_get_int(env, unit_erl, &unit);
-  void *ptr;
+  void *ptr = NULL;
   get_device_resource(env, device_erl, &ptr);
-  if (ptr)
+  printf("Address  of ptr: %p\n", ptr);
+  if (ptr != NULL)
   {
     struct device** device = ptr;
+    char* name = tuntap_get_ifname(*device);
+    printf("device name is ..%s..\n", name);
+
     int res = tuntap_start(*device, mode, unit);
-    if (res)
+    if (res>=0)
     {
       return enif_make_atom(env, "true");
     }
+    printf("res is %d\n", res);
+    return enif_make_int(env, res);
   }
   return enif_make_atom(env, "false");
 }
@@ -155,11 +161,11 @@ static ERL_NIF_TERM tuntap_set_ip_nif(ErlNifEnv* env, int argc, const ERL_NIF_TE
   {
     void *ptr;
     get_device_resource(env, device_erl, &ptr);
-    if (ptr)
+    if (ptr != NULL)
     {
       struct device **device = ptr;
       int res = tuntap_set_ip(*device, buffer, netmask);
-      if (res)
+      if (res >= 0)
       {
         return enif_make_atom(env, "true");
       }
@@ -174,19 +180,13 @@ static ERL_NIF_TERM tuntap_read_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM
   ERL_NIF_TERM device_erl = argv[0];
   void *ptr;
   get_device_resource(env, device_erl, &ptr);
-  if (ptr)
+  if (ptr != NULL)
   {
     struct device **device = ptr;
-    int buf_length;
-    buf_length = tuntap_get_readable(*device);
-    if (buf_length < 1)
-    {
-      //enif_alloc_binary(buf_length, )
-      return enif_make_atom(env, "nil");
-    }
     //enif_make_new_binary(env, buf_length, )
-    void* buff = enif_alloc(buf_length);
-    int length = tuntap_read(*device, buff, buf_length);
+    void* buff = enif_alloc(2048);
+    int length = tuntap_read(*device, buff, 2048);
+    printf("read length %d\n", length);
     ERL_NIF_TERM res;
     unsigned char *bin = enif_make_new_binary(env, length, &res);
     memcpy(bin, buff, length);
@@ -195,6 +195,20 @@ static ERL_NIF_TERM tuntap_read_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM
   }
   return enif_make_atom(env, "nil");
 }
+
+static ERL_NIF_TERM tuntap_get_readable_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+  ERL_NIF_TERM device_erl = argv[0];
+  void *ptr;
+  get_device_resource(env, device_erl, &ptr);
+  if (ptr == NULL){
+    return enif_make_atom(env, "false");
+  }
+  struct device **device = ptr;
+  int len = tuntap_get_readable(*device);
+  return enif_make_int(env, len);
+}
+
 
 static ERL_NIF_TERM tuntap_write_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -257,13 +271,12 @@ static ERL_NIF_TERM tuntap_wait_read_nif(ErlNifEnv* env, int argc, const ERL_NIF
   ErlNifPid pid;
   int res;
   res = enif_get_local_pid(env, argv[2], &pid);
-  if (res == false)
+  if (res <= 0)
   {
     return enif_make_atom(env, "false");
   }
-  ERL_NIF_TERM device_tuple = enif_make_tuple(env, 2, argv[0], argv[1]);
   ERL_NIF_TERM ref = enif_make_ref(env);
-  res = enif_select(env, fd, ERL_NIF_SELECT_READ, device_tuple, pid, ref);
+  res = enif_select(env, fd, ERL_NIF_SELECT_READ, ptr, &pid, ref);
   return enif_make_tuple(env, 2, enif_make_atom(env, "true"), ref);
 }
 
@@ -286,7 +299,8 @@ static ErlNifFunc nif_funcs[] ={
   {"tuntap_read_nif", 1, tuntap_read_nif},
   {"tuntap_write_nif", 2, tuntap_write_nif},
   {"tuntap_get_fd_nif", 1, tuntap_get_fd_nif},
-  {"tuntap_wait_read_nif", 3, tuntap_wait_read_nif}
+  {"tuntap_wait_read_nif", 3, tuntap_wait_read_nif},
+  {"tuntap_get_readable_nif", 1, tuntap_get_readable_nif}
 };
 
 ERL_NIF_INIT(tuntap, nif_funcs, load, NULL, NULL, NULL)
