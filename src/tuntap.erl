@@ -9,7 +9,7 @@
 
 init() ->
   PrivDir = code:priv_dir(?MODULE),
-  NifPath = filename:join(PrivDir, "  tuntap_nif"),
+  NifPath = filename:join(PrivDir, "tuntap_nif"),
   case erlang:load_nif(NifPath, 0) of
     ok ->
       ok;
