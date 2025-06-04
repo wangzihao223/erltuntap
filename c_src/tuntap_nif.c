@@ -28,7 +28,6 @@ static ERL_NIF_TERM tuntap_init_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM
   meta *meta_data = enif_priv_data(env);
   ErlNifResourceType *device_type = meta_data->device;
   struct device *device =  tuntap_init();
-  printf("Address of x: %p\n", (void*)device);
   struct device **ptr = (struct device**)enif_alloc_resource(device_type, sizeof(struct device*));
   *ptr = device;
   ERL_NIF_TERM edevice = enif_make_resource(env, ptr);
@@ -47,7 +46,6 @@ static ERL_NIF_TERM tuntap_destroy_nif(ErlNifEnv* env, int argc, const ERL_NIF_T
   {
     //printf("call it\n");
     struct device **device= ptr;
-    printf("Address of x: %p\n", *device);
     tuntap_destroy(*device);
 
     return enif_make_atom(env, "true");
@@ -68,12 +66,10 @@ static ERL_NIF_TERM tuntap_start_nif(ErlNifEnv* env, int argc, const ERL_NIF_TER
   enif_get_int(env, unit_erl, &unit);
   void *ptr = NULL;
   get_device_resource(env, device_erl, &ptr);
-  printf("Address  of ptr: %p\n", ptr);
   if (ptr != NULL)
   {
     struct device** device = ptr;
     char* name = tuntap_get_ifname(*device);
-    printf("device name is ..%s..\n", name);
 
     int res = tuntap_start(*device, mode, unit);
     if (res>=0)
@@ -186,7 +182,6 @@ static ERL_NIF_TERM tuntap_read_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM
     //enif_make_new_binary(env, buf_length, )
     void* buff = enif_alloc(2048);
     int length = tuntap_read(*device, buff, 2048);
-    printf("read length %d\n", length);
     ERL_NIF_TERM res;
     unsigned char *bin = enif_make_new_binary(env, length, &res);
     memcpy(bin, buff, length);
