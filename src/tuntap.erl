@@ -1,12 +1,21 @@
 -module(tuntap).
 
--export([load/0, tuntap_init/0, tuntap_destroy/1, tuntap_start/3, tuntap_get_hwaddr_nif/2,
+-export([tuntap_init/0, tuntap_destroy/1, tuntap_start/3, tuntap_get_hwaddr_nif/2,
          tuntap_down_nif/1, tuntap_up_nif/1, tuntap_set_ip_nif/3, tuntap_read_nif/1,
          tuntap_write_nif/2, tuntap_get_fd_nif/1, tuntap_wait_read_nif/3, tuntap_set_hwaddr_nif/2,
          tuntap_get_readable_nif/1]).
 
-load() ->
-  ok = erlang:load_nif("./priv/tuntap_nif", 0).
+-on_load init/0.
+
+init() ->
+  PrivDir = code:priv_dir(?MODULE),
+  NifPath = filename:join(PrivDir, "  tuntap_nif"),
+  case erlang:load_nif(NifPath, 0) of
+    ok ->
+      ok;
+    {error, Reason} ->
+      exit({load_nif_failed, Reason})
+  end.
 
 tuntap_init() ->
   erlang:nif_error(undef).
