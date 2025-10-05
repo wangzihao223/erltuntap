@@ -1,0 +1,6 @@
+name = "erltuntap"
+
+# The version of your project (required)
+version = "1.0.0"
+
+target = "erlang"
